@@ -25,8 +25,11 @@ const QK = [
   { label:'Calaca',     full:'Calaca, Batangas, Philippines',     lat:13.9335, lon:120.8135 },
 ];
 
+
+
 // ── LocationInput ─────────────────────────────
-function LocationInput({ label, color, placeholder, value, onSelect, onClear }) {
+function LocationInput({ label, color, placeholder, value, onSelect, onClear, reverseGeocode })
+ {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -37,9 +40,13 @@ function LocationInput({ label, color, placeholder, value, onSelect, onClear }) 
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, []);
+  
 
   return (
-    <div ref={ref} style={{ flex:1, minWidth:0, position:'relative' }}>
+
+
+    
+    <div ref={ref} style={{ flex:1, minWidth:0, position:'relative', zIndex:10000 }}>
       <label style={{ display:'flex', alignItems:'center', gap:5, fontSize:10, fontWeight:700, color:'#64748b', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:6 }}>
         <MapPin size={10} color={color} style={{flexShrink:0}}/>{label}
       </label>
@@ -62,33 +69,154 @@ function LocationInput({ label, color, placeholder, value, onSelect, onClear }) 
         )}
       </div>
       {open && (
-        <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, background:'#fff', border:'1.5px solid #e2e8f0', borderRadius:14, boxShadow:'0 12px 40px rgba(0,0,0,0.13)', zIndex:500, overflow:'hidden' }}>
-          {/* Quick picks */}
-          <div style={{ padding:'10px 12px 8px', borderBottom:'1px solid #f1f5f9' }}>
-            <div style={{ fontSize:9, fontWeight:800, color:'#94a3b8', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:7 }}>Quick Select</div>
-            <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
-              {QK.map(l=>(
-                <button key={l.label} onMouseDown={e=>{e.preventDefault();onSelect({display_name:l.full,lat:String(l.lat),lon:String(l.lon)});setQ('');setOpen(false);}}
-                  style={{ padding:'4px 10px', fontSize:11, fontWeight:600, borderRadius:20, border:'1.5px solid #e2e8f0', background:'#f8fafc', color:'#475569', cursor:'pointer', transition:'all 0.13s' }}
-                  onMouseEnter={e=>{e.currentTarget.style.background=color+'18';e.currentTarget.style.borderColor=color;e.currentTarget.style.color=color;}}
-                  onMouseLeave={e=>{e.currentTarget.style.background='#f8fafc';e.currentTarget.style.borderColor='#e2e8f0';e.currentTarget.style.color='#475569';}}>
-                  {l.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          {/* Search results */}
-          {q.length >= 2 && sugg.map((s,i)=>(
-            <div key={s.place_id||i} onMouseDown={e=>{e.preventDefault();onSelect(s);setQ('');setOpen(false);}}
-              style={{ padding:'10px 14px', cursor:'pointer', fontSize:13, fontWeight:500, color:'#1e293b', display:'flex', alignItems:'center', gap:8, borderTop:'1px solid #f8fafc', transition:'background 0.1s' }}
-              onMouseEnter={e=>e.currentTarget.style.background='#f8fafc'}
-              onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
-              <MapPin size={11} color="#94a3b8"/>{s.display_name}
-            </div>
-          ))}
-          {q.length >= 2 && sugg.length===0 && <div style={{ padding:'14px', fontSize:13, color:'#94a3b8', textAlign:'center' }}>No results — try a different spelling</div>}
-        </div>
-      )}
+  <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, background:'#fff', border:'1.5px solid #e2e8f0', borderRadius:14, boxShadow:'0 12px 40px rgba(0,0,0,0.13)', zIndex:99999, overflow:'hidden' }}>
+
+    {/* ── Current Location ── */}
+    <div style={{ padding:'10px 12px', borderBottom:'1px solid #f1f5f9' }}>
+      <button
+        onMouseDown={e => {
+          e.preventDefault();
+          if (!navigator.geolocation) return;
+
+navigator.geolocation.getCurrentPosition(async pos => {
+  const { latitude, longitude } = pos.coords;
+
+  const name = await reverseGeocode(latitude, longitude);
+
+  onSelect({
+    display_name: name,
+    lat: String(latitude),
+    lon: String(longitude)
+  });
+
+  setQ('');
+  setOpen(false);
+});
+        }}
+        style={{
+          width:'100%',
+          padding:'8px 10px',
+          borderRadius:10,
+          border:'1.5px solid #e2e8f0',
+          background:'#f8fafc',
+          fontSize:12,
+          fontWeight:600,
+          cursor:'pointer'
+        }}
+      >
+        📍 Use My Current Location
+      </button>
+    </div>
+
+    {/* ── Pin Location ── */}
+    <div style={{ padding:'8px 12px', borderBottom:'1px solid #f1f5f9' }}>
+      <button
+        onMouseDown={e => {
+          e.preventDefault();
+
+          if (label === 'Origin') {
+  window.dispatchEvent(new CustomEvent('pick-origin'));
+} else {
+  window.dispatchEvent(new CustomEvent('pick-destination'));
+}
+
+// ✅ ADD THIS LINE
+window.scrollTo({ top: 400, behavior: 'smooth' });
+
+setOpen(false);
+        }}
+        style={{
+          width:'100%',
+          padding:'8px 10px',
+          borderRadius:10,
+          border:'1.5px solid #e2e8f0',
+          background:'#f8fafc',
+          fontSize:12,
+          fontWeight:600,
+          cursor:'pointer'
+        }}
+      >
+        📌 Pin Location on Map
+      </button>
+    </div>
+
+    {/* ── Quick picks (UNCHANGED) ── */}
+    <div style={{ padding:'10px 12px 8px', borderBottom:'1px solid #f1f5f9' }}>
+      <div style={{ fontSize:9, fontWeight:800, color:'#94a3b8', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:7 }}>
+        Quick Select
+      </div>
+      <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
+        {QK.map(l=>(
+          <button key={l.label}
+            onMouseDown={e=>{
+              e.preventDefault();
+              onSelect({display_name:l.full,lat:String(l.lat),lon:String(l.lon)});
+              setQ('');
+              setOpen(false);
+            }}
+            style={{
+              padding:'4px 10px',
+              fontSize:11,
+              fontWeight:600,
+              borderRadius:20,
+              border:'1.5px solid #e2e8f0',
+              background:'#f8fafc',
+              color:'#475569',
+              cursor:'pointer',
+              transition:'all 0.13s'
+            }}
+            onMouseEnter={e=>{
+              e.currentTarget.style.background=color+'18';
+              e.currentTarget.style.borderColor=color;
+              e.currentTarget.style.color=color;
+            }}
+            onMouseLeave={e=>{
+              e.currentTarget.style.background='#f8fafc';
+              e.currentTarget.style.borderColor='#e2e8f0';
+              e.currentTarget.style.color='#475569';
+            }}>
+            {l.label}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    {/* ── Search results (UNCHANGED) ── */}
+    {q.length >= 2 && sugg.map((s,i)=>(
+      <div key={s.place_id||i}
+        onMouseDown={e=>{
+          e.preventDefault();
+          onSelect(s);
+          setQ('');
+          setOpen(false);
+        }}
+        style={{
+          padding:'10px 14px',
+          cursor:'pointer',
+          fontSize:13,
+          fontWeight:500,
+          color:'#1e293b',
+          display:'flex',
+          alignItems:'center',
+          gap:8,
+          borderTop:'1px solid #f8fafc',
+          transition:'background 0.1s'
+        }}
+        onMouseEnter={e=>e.currentTarget.style.background='#f8fafc'}
+        onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
+        <MapPin size={11} color="#94a3b8"/>
+        {s.display_name}
+      </div>
+    ))}
+
+    {q.length >= 2 && sugg.length===0 && (
+      <div style={{ padding:'14px', fontSize:13, color:'#94a3b8', textAlign:'center' }}>
+        No results — try a different spelling
+      </div>
+    )}
+
+  </div>
+)}
     </div>
   );
 }
@@ -130,6 +258,8 @@ function RouteOptionCard({ option, index, isSelected, onClick }) {
     </div>
   );
 }
+
+
 
 // ── RideHailingPanel ─────────────────────────
 function RideHailingPanel({ opts }) {
@@ -259,6 +389,7 @@ function StatBadge({ label, value, accent }) {
 export default function Home() {
   const [origin, setOrigin] = useState(null);
   const [dest, setDest]     = useState(null);
+  const [picking, setPicking] = useState(null);
   const [triggered, setTriggered] = useState(false);
   const [selOpt, setSelOpt] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
@@ -286,6 +417,34 @@ export default function Home() {
 
   const handleFind = () => { if (!oCoords||!dCoords) return; setTriggered(true); setSelOpt(0); setCustomSegs([]); };
   const swap = () => { setOrigin(dest); setDest(origin); setTriggered(false); };
+  
+    async function reverseGeocode(lat, lon) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
+    );
+    const data = await res.json();
+    return data.display_name || 'Unknown location';
+  } catch (err) {
+    console.error(err);
+    return 'Unknown location';
+  }
+}
+  
+  useEffect(() => {
+  const pickOrigin = () => setPicking('origin');
+  const pickDestination = () => setPicking('destination');
+
+
+  window.addEventListener('pick-origin', pickOrigin);
+  window.addEventListener('pick-destination', pickDestination);
+
+  return () => {
+    window.removeEventListener('pick-origin', pickOrigin);
+    window.removeEventListener('pick-destination', pickDestination);
+  };
+}, []);
+
 
   return (
     <div style={{ maxWidth:980, margin:'0 auto', padding:'32px 20px 60px' }}>
@@ -307,7 +466,9 @@ export default function Home() {
       <div className="anim-fade-up" style={{ background:'#fff', borderRadius:20, padding:'24px 24px 20px', marginBottom:20, boxShadow:'0 2px 24px rgba(0,0,0,0.07)', border:'1.5px solid #f0f2f7' }}>
         <div style={{ display:'flex', alignItems:'flex-end', gap:10, marginBottom:16 }}>
           <LocationInput label="Origin" color="#10b981" placeholder="Where are you starting?"
-            value={origin} onSelect={v=>{setOrigin(v);setTriggered(false);}} onClear={()=>{setOrigin(null);setTriggered(false);}}/>
+            value={origin} onSelect={v=>{setOrigin(v);setTriggered(false);}} onClear={()=>{setOrigin(null);setTriggered(false);}}
+            reverseGeocode={reverseGeocode}  
+            />
           {/* Swap */}
           <button onClick={swap} title="Swap origin and destination"
             style={{ width:38, height:38, borderRadius:10, border:'1.5px solid #e2e8f0', background:'#f8fafc', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#64748b', flexShrink:0, marginBottom:1, transition:'all 0.2s' }}
@@ -316,7 +477,9 @@ export default function Home() {
             <ArrowRight size={15}/>
           </button>
           <LocationInput label="Destination" color="#ef4444" placeholder="Where are you going?"
-            value={dest} onSelect={v=>{setDest(v);setTriggered(false);}} onClear={()=>{setDest(null);setTriggered(false);}}/>
+            value={dest} onSelect={v=>{setDest(v);setTriggered(false);}} onClear={()=>{setDest(null);setTriggered(false);}}
+            reverseGeocode={reverseGeocode} 
+            />
         </div>
 
         <button onClick={handleFind} disabled={!origin||!dest||loading}
@@ -341,6 +504,42 @@ export default function Home() {
           </span>
         </div>
       )}
+
+{/* Map Picking Here */}
+
+{!rd && (
+  <div style={{ marginBottom: 20 }}>
+    <RouteMap
+      originCoords={oCoords}
+      destCoords={dCoords}
+      geometry={null}
+      originName={oLabel}
+      destName={dLabel}
+      onMapClick={async (lat, lng) => {
+        if (!picking) return;
+
+        const name = await reverseGeocode(lat, lng);
+
+        if (picking === 'origin') {
+          setOrigin({
+            display_name: name,
+            lat: String(lat),
+            lon: String(lng)
+          });
+        } else if (picking === 'destination') {
+          setDest({
+            display_name: name,
+            lat: String(lat),
+            lon: String(lng)
+          });
+        }
+
+        setPicking(null);
+        setTriggered(false); 
+      }}
+    />
+  </div>
+)}
 
       {/* ── Results ── */}
       {rd && (
@@ -394,7 +593,35 @@ export default function Home() {
                 <h2 style={{ fontSize:14, fontWeight:800, color:'#0f172a', margin:0, letterSpacing:'-0.01em' }}>Live Route Map</h2>
                 <span style={{ fontSize:9, fontWeight:800, background:'#eef2ff', color:'#4f46e5', padding:'2px 8px', borderRadius:20, letterSpacing:'0.06em' }}>OPENSTREETMAP</span>
               </div>
-              <RouteMap originCoords={oCoords} destCoords={dCoords} geometry={rd.geometry} originName={oLabel} destName={dLabel}/>
+<RouteMap
+  originCoords={oCoords}
+  destCoords={dCoords}
+  geometry={rd.geometry}
+  originName={oLabel}
+  destName={dLabel}
+onMapClick={async (lat, lng) => {
+if (!picking) return;
+  const name = await reverseGeocode(lat, lng);
+
+  if (picking === 'origin') {
+    setOrigin({
+      display_name: name,
+      lat: String(lat),
+      lon: String(lng)
+    });
+  } else if (picking === 'destination') {
+    setDest({
+      display_name: name,
+      lat: String(lat),
+      lon: String(lng)
+    });
+  }
+
+  setPicking(null);
+  setTriggered(false);
+}}
+/>
+
 
               {/* Mini summary of selected option */}
               {allOpts[selOpt] && (

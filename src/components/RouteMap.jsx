@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -35,32 +35,72 @@ function FitBounds({ originCoords, destCoords, poly }) {
   return null;
 }
 
-export default function RouteMap({ originCoords, destCoords, geometry, originName, destName }) {
+/* ✅ ADDED: Map click handler */
+function MapClickHandler({ onMapClick }) {
+  useMapEvents({
+    click(e) {
+      if (onMapClick) {
+        onMapClick(e.latlng.lat, e.latlng.lng);
+      }
+    }
+  });
+  return null;
+}
+
+export default function RouteMap({
+  originCoords,
+  destCoords,
+  geometry,
+  originName,
+  destName,
+  onMapClick /* ✅ ADDED PROP */
+}) {
   const poly = geometry?.coordinates?.map(([lng, lat]) => [lat, lng]) || [];
   const center = originCoords || [14.2116, 121.1653];
-
+  
+  useEffect(() => {
+  const panes = document.querySelectorAll('.leaflet-pane');
+  panes.forEach(p => p.style.zIndex = 0);
+}, []);
+  
   return (
-    <div style={{ borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.10)', border: '1px solid #e2e8f0' }}>
+<div style={{
+  borderRadius: 16,
+  overflow: 'hidden',
+  boxShadow: '0 4px 24px rgba(0,0,0,0.10)',
+  border: '1px solid #e2e8f0',
+  position: 'relative',
+  zIndex: 0
+}}>
       <MapContainer center={center} zoom={11} style={{ height: 420, width: '100%' }} scrollWheelZoom zoomControl>
+
+        {/* ✅ ADDED: Enable clicking on map */}
+        <MapClickHandler onMapClick={onMapClick} />
+
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+
         {originCoords && destCoords && <FitBounds originCoords={originCoords} destCoords={destCoords} poly={poly} />}
+
         {originCoords && (
           <Marker position={originCoords} icon={iconA}>
             <Popup><strong style={{color:'#10b981'}}>Origin</strong><br/>{originName}</Popup>
           </Marker>
         )}
+
         {destCoords && (
           <Marker position={destCoords} icon={iconB}>
             <Popup><strong style={{color:'#ef4444'}}>Destination</strong><br/>{destName}</Popup>
           </Marker>
         )}
+
         {poly.length > 1 && <>
           <Polyline positions={poly} color="#818cf8" weight={10} opacity={0.3} />
           <Polyline positions={poly} color="#4f46e5" weight={4}  opacity={0.9} dashArray="" />
         </>}
+
       </MapContainer>
     </div>
   );
