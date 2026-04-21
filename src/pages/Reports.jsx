@@ -1,122 +1,160 @@
 import { useState } from 'react';
 import { useGetReportsQuery, useCreateReportMutation, useGetStrikesQuery } from '../services/apiSlice';
-import { AlertTriangle, Plus, X } from 'lucide-react';
+import { AlertTriangle, Plus, X, CheckCircle, FileWarning, Radio } from 'lucide-react';
 import Pagination from '../components/Pagination';
 
-const CATEGORIES = ['overcharging', 'rude driver', 'unsafe driving', 'route disruption', 'strike'];
-const PAGE_SIZE = 3;
+const CATS = ['overcharging','rude driver','unsafe driving','route disruption','strike'];
+const PER  = 4;
+
+const ST = {
+  active:   { bg:'#fff1f2', border:'#fecdd3', badge:'#ef4444', text:'#9f1239' },
+  resolved: { bg:'#f0fdf4', border:'#bbf7d0', badge:'#16a34a', text:'#14532d' },
+  open:     { bg:'#fefce8', border:'#fde68a', badge:'#ca8a04', text:'#854d0e' },
+};
 
 export default function Reports() {
-  const { data: reports = [] } = useGetReportsQuery();
+  const { data: reports = [], refetch } = useGetReportsQuery();
   const { data: strikes = [] } = useGetStrikesQuery();
-  const [createReport] = useCreateReportMutation();
-  const [page, setPage] = useState(1);
+  const [create, { isLoading: submitting }] = useCreateReportMutation();
+  const [page, setPage]     = useState(1);
   const [search, setSearch] = useState('');
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ category: 'overcharging', description: '', location: '' });
-  const [submitted, setSubmitted] = useState(false);
+  const [modal, setModal]   = useState(false);
+  const [form, setForm]     = useState({ category:'overcharging', description:'', location:'' });
+  const [ok, setOk]         = useState(false);
 
-  const filtered = reports.filter(r =>
-    r.category.toLowerCase().includes(search.toLowerCase()) ||
-    r.location.toLowerCase().includes(search.toLowerCase())
-  );
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const filtered  = reports.filter(r => r.category.toLowerCase().includes(search.toLowerCase()) || r.location.toLowerCase().includes(search.toLowerCase()) || r.description.toLowerCase().includes(search.toLowerCase()));
+  const totalPgs  = Math.max(1, Math.ceil(filtered.length / PER));
+  const paginated = filtered.slice((page-1)*PER, page*PER);
 
   const handleSubmit = async () => {
-    if (!form.description || !form.location) return;
-    await createReport(form);
-    setSubmitted(true);
-    setShowForm(false);
-    setForm({ category: 'overcharging', description: '', location: '' });
-    setTimeout(() => setSubmitted(false), 3000);
+    if (!form.description.trim()||!form.location.trim()) return;
+    await create(form); await refetch();
+    setOk(true); setModal(false); setForm({ category:'overcharging', description:'', location:'' });
+    setTimeout(()=>setOk(false), 3500);
   };
 
-  const badgeColor = { active: '#ef4444', resolved: '#10b981', open: '#f59e0b' };
+  const inp = { width:'100%', padding:'9px 11px', borderRadius:9, border:'1.5px solid #e2e8f0', fontSize:13, fontWeight:500, color:'#0f172a', outline:'none', boxSizing:'border-box', fontFamily:'inherit', transition:'border 0.15s', marginTop:4, marginBottom:12 };
+  const lbl = t => <label style={{ fontSize:10, fontWeight:800, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.08em' }}>{t}</label>;
 
   return (
-    <div style={{ maxWidth: 860, margin: '0 auto', padding: '24px 16px' }}>
-      <h1 style={{ fontSize: 26, fontWeight: 800, color: '#1e293b', marginBottom: 4 }}>Transport Reports</h1>
-      <p style={{ color: '#64748b', marginBottom: 24 }}>Community reports on transport issues across CALABARZON</p>
+    <div style={{ maxWidth:900, margin:'0 auto', padding:'32px 20px 60px' }}>
+      {/* Header */}
+      <div style={{ marginBottom:28 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:5 }}>
+          <div style={{ width:40, height:40, borderRadius:12, background:'linear-gradient(135deg,#ef4444,#dc2626)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 14px rgba(239,68,68,0.32)' }}>
+            <FileWarning size={20} color="#fff"/>
+          </div>
+          <div>
+            <h1 style={{ fontSize:26, fontWeight:900, color:'#0f172a', margin:0, letterSpacing:'-0.03em' }}>Transport Reports</h1>
+            <p style={{ fontSize:12, color:'#64748b', margin:0, marginTop:2 }}>Community-sourced reports and active transport strikes across CALABARZON</p>
+          </div>
+        </div>
+      </div>
 
-      {submitted && (
-        <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, padding: 14, marginBottom: 16, color: '#166534', fontWeight: 600 }}>
-          Report submitted successfully!
+      {/* Success */}
+      {ok && (
+        <div style={{ display:'flex', gap:10, alignItems:'center', background:'#f0fdf4', border:'1.5px solid #bbf7d0', borderRadius:12, padding:'13px 16px', marginBottom:18, animation:'fadeUp 0.3s ease' }}>
+          <CheckCircle size={16} color="#16a34a"/>
+          <span style={{ fontWeight:700, color:'#14532d', fontSize:13 }}>Report submitted successfully. Thank you!</span>
         </div>
       )}
 
-      {/* STRIKES */}
-      <div style={{ marginBottom: 28 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 12, color: '#1e293b', display: 'flex', gap: 8, alignItems: 'center' }}>
-          <AlertTriangle size={18} color="#ef4444" /> Active Transport Strikes
-        </h2>
-        {strikes.map(s => (
-          <div key={s.id} style={{ background: s.status === 'active' ? '#fef2f2' : '#f0fdf4', border: `1px solid ${s.status === 'active' ? '#fecaca' : '#86efac'}`, borderRadius: 10, padding: 16, marginBottom: 10 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <span style={{ fontWeight: 700, color: '#1e293b' }}>{s.reason}</span>
-              <span style={{ background: badgeColor[s.status], color: '#fff', fontSize: 11, padding: '3px 10px', borderRadius: 20, fontWeight: 600 }}>{s.status.toUpperCase()}</span>
+      {/* Strikes */}
+      <div style={{ marginBottom:28 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
+          <Radio size={15} color="#ef4444"/>
+          <h2 style={{ fontSize:15, fontWeight:800, color:'#0f172a', margin:0, letterSpacing:'-0.01em' }}>Transport Strikes</h2>
+          <span style={{ fontSize:9, fontWeight:800, background:'#fff1f2', color:'#ef4444', padding:'2px 8px', borderRadius:20, letterSpacing:'0.06em' }}>
+            {strikes.filter(s=>s.status==='active').length} ACTIVE
+          </span>
+        </div>
+        {strikes.map(s=>{
+          const st = ST[s.status]||ST.open;
+          return (
+            <div key={s.id} style={{ background:st.bg, border:`1.5px solid ${st.border}`, borderRadius:14, padding:'15px 17px', marginBottom:10, transition:'box-shadow 0.2s' }}
+              onMouseEnter={e=>e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.07)'}
+              onMouseLeave={e=>e.currentTarget.style.boxShadow='none'}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, marginBottom:7 }}>
+                <span style={{ fontWeight:700, fontSize:14, color:st.text }}>{s.reason}</span>
+                <span style={{ background:st.badge, color:'#fff', fontSize:9, fontWeight:800, padding:'3px 10px', borderRadius:20, flexShrink:0, letterSpacing:'0.06em', textTransform:'uppercase' }}>{s.status}</span>
+              </div>
+              <div style={{ display:'flex', gap:16, flexWrap:'wrap', fontSize:12, color:'#64748b' }}>
+                <span><strong>Provinces:</strong> {s.affectedProvinces.join(', ')}</span>
+                <span><strong>Routes:</strong> {s.affectedRoutes.join(' · ')}</span>
+                <span style={{ color:'#94a3b8' }}>{s.date}</span>
+              </div>
             </div>
-            <div style={{ fontSize: 13, color: '#64748b' }}>Provinces: {s.affectedProvinces.join(', ')}</div>
-            <div style={{ fontSize: 13, color: '#64748b' }}>Routes: {s.affectedRoutes.join(' | ')}</div>
-            <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>{s.date}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* REPORTS LIST */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <input placeholder="Search by category or location..." value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1); }}
-          style={{ padding: '9px 14px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 13, width: 280, outline: 'none' }}
-        />
-        <button onClick={() => setShowForm(true)}
-          style={{ display: 'flex', gap: 6, alignItems: 'center', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-          <Plus size={16} /> Submit Report
-        </button>
-      </div>
-
-      {paginated.length === 0 && (
-        <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>No reports found.</div>
-      )}
-
-      {paginated.map(r => (
-        <div key={r.id} style={{ background: '#fff', borderRadius: 12, padding: 16, marginBottom: 10, boxShadow: '0 2px 8px rgba(0,0,0,.06)', border: '1.5px solid #e2e8f0' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontWeight: 700, fontSize: 14, textTransform: 'capitalize' }}>{r.category}</span>
-            <span style={{ background: badgeColor[r.status] || '#94a3b8', color: '#fff', fontSize: 11, padding: '3px 10px', borderRadius: 20, fontWeight: 600 }}>{r.status.toUpperCase()}</span>
-          </div>
-          <div style={{ fontSize: 13, color: '#475569', marginBottom: 4 }}>{r.description}</div>
-          <div style={{ fontSize: 12, color: '#94a3b8' }}>{r.location} · {r.date}</div>
-        </div>
-      ))}
-
-      {totalPages > 1 && <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />}
-
-      {/* MODAL FORM */}
-      {showForm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: 420, position: 'relative' }}>
-            <button onClick={() => setShowForm(false)} style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', cursor: 'pointer' }}>
-              <X size={20} />
+      {/* Reports list */}
+      <div style={{ background:'#fff', borderRadius:20, padding:24, border:'1.5px solid #f0f2f7', boxShadow:'0 2px 20px rgba(0,0,0,0.05)' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, marginBottom:18, flexWrap:'wrap' }}>
+          <h2 style={{ fontSize:15, fontWeight:800, color:'#0f172a', margin:0, letterSpacing:'-0.01em' }}>Community Reports</h2>
+          <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+            <input placeholder="Search reports…" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}
+              style={{ padding:'8px 12px', borderRadius:9, border:'1.5px solid #e2e8f0', fontSize:12, fontWeight:500, outline:'none', width:200, color:'#0f172a', fontFamily:'inherit', transition:'border 0.15s' }}
+              onFocus={e=>e.target.style.borderColor='#4f46e5'} onBlur={e=>e.target.style.borderColor='#e2e8f0'}/>
+            <button onClick={()=>setModal(true)}
+              style={{ display:'flex', alignItems:'center', gap:6, background:'linear-gradient(135deg,#ef4444,#dc2626)', color:'#fff', border:'none', borderRadius:9, padding:'9px 15px', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', transition:'all 0.2s', boxShadow:'0 3px 12px rgba(239,68,68,0.28)' }}
+              onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-1px)';e.currentTarget.style.boxShadow='0 5px 16px rgba(239,68,68,0.38)';}}
+              onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 3px 12px rgba(239,68,68,0.28)';}}>
+              <Plus size={14}/> Submit Report
             </button>
-            <h3 style={{ fontWeight: 800, fontSize: 18, marginBottom: 18 }}>Submit a Report</h3>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Category</label>
-            <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
-              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', marginBottom: 12, marginTop: 4, fontSize: 13 }}>
-              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </div>
+        </div>
+
+        {paginated.length===0 && (
+          <div style={{ textAlign:'center', padding:'40px 0', color:'#94a3b8' }}>
+            <FileWarning size={32} style={{ marginBottom:10, opacity:0.35 }}/>
+            <div style={{ fontSize:13, fontWeight:500 }}>No reports found</div>
+          </div>
+        )}
+
+        {paginated.map(r=>{
+          const st = ST[r.status]||ST.open;
+          return (
+            <div key={r.id} style={{ background:'#fafafa', borderRadius:12, padding:'13px 15px', marginBottom:9, border:'1.5px solid #f1f5f9', transition:'box-shadow 0.2s' }}
+              onMouseEnter={e=>e.currentTarget.style.boxShadow='0 3px 14px rgba(0,0,0,0.06)'}
+              onMouseLeave={e=>e.currentTarget.style.boxShadow='none'}>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
+                <span style={{ fontSize:10, fontWeight:800, color:'#475569', textTransform:'uppercase', letterSpacing:'0.07em' }}>{r.category}</span>
+                <span style={{ background:st.badge, color:'#fff', fontSize:9, fontWeight:800, padding:'2px 9px', borderRadius:20, letterSpacing:'0.06em', textTransform:'uppercase' }}>{r.status}</span>
+              </div>
+              <div style={{ fontSize:13, fontWeight:500, color:'#1e293b', marginBottom:5 }}>{r.description}</div>
+              <div style={{ fontSize:11, color:'#94a3b8', fontWeight:500 }}>{r.location} · {r.date}</div>
+            </div>
+          );
+        })}
+
+        <Pagination currentPage={page} totalPages={totalPgs} onPageChange={setPage}/>
+      </div>
+
+      {/* Modal */}
+      {modal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.55)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20, backdropFilter:'blur(4px)' }}
+          onClick={e=>{if(e.target===e.currentTarget)setModal(false);}}>
+          <div style={{ background:'#fff', borderRadius:20, padding:28, width:'100%', maxWidth:430, boxShadow:'0 32px 64px rgba(0,0,0,0.22)', position:'relative', animation:'fadeUp 0.25s ease' }}>
+            <button onClick={()=>setModal(false)} style={{ position:'absolute', top:16, right:16, background:'#f1f5f9', border:'none', borderRadius:8, width:32, height:32, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#64748b' }}>
+              <X size={14}/>
+            </button>
+            <h3 style={{ fontWeight:800, fontSize:17, color:'#0f172a', marginBottom:4 }}>Submit a Report</h3>
+            <p style={{ fontSize:12, color:'#64748b', marginBottom:20 }}>Help the community by reporting transport issues in CALABARZON.</p>
+            {lbl('Category')}
+            <select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} style={inp}>
+              {CATS.map(c=><option key={c} value={c}>{c}</option>)}
             </select>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Location</label>
-            <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}
-              placeholder="e.g. Calamba, Laguna"
-              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', marginBottom: 12, marginTop: 4, fontSize: 13, boxSizing: 'border-box' }} />
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Description</label>
-            <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-              placeholder="Describe the incident..."
-              rows={3}
-              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', marginBottom: 16, marginTop: 4, fontSize: 13, boxSizing: 'border-box', resize: 'vertical' }} />
-            <button onClick={handleSubmit}
-              style={{ width: '100%', padding: 12, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>
-              Submit Report
+            {lbl('Location')}
+            <input value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder="e.g. Calamba, Laguna" style={inp}
+              onFocus={e=>e.target.style.borderColor='#ef4444'} onBlur={e=>e.target.style.borderColor='#e2e8f0'}/>
+            {lbl('Description')}
+            <textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Describe the incident…" rows={3}
+              style={{...inp,resize:'vertical'}}
+              onFocus={e=>e.target.style.borderColor='#ef4444'} onBlur={e=>e.target.style.borderColor='#e2e8f0'}/>
+            <button onClick={handleSubmit} disabled={submitting||!form.description.trim()||!form.location.trim()}
+              style={{ width:'100%', padding:'12px', background:form.description&&form.location?'linear-gradient(135deg,#ef4444,#dc2626)':'#e2e8f0', color:form.description&&form.location?'#fff':'#94a3b8', border:'none', borderRadius:11, fontWeight:700, fontSize:14, cursor:form.description&&form.location?'pointer':'not-allowed', display:'flex', alignItems:'center', justifyContent:'center', gap:8, fontFamily:'inherit', transition:'all 0.2s' }}>
+              <Plus size={15}/> {submitting?'Submitting…':'Submit Report'}
             </button>
           </div>
         </div>

@@ -4,30 +4,41 @@ import { store } from './app/store';
 import Home from './pages/Home';
 import RouteDetail from './pages/RouteDetail';
 import Reports from './pages/Reports';
-import { Map, FileWarning, Home as HomeIcon } from 'lucide-react';
+import { Map, FileWarning } from 'lucide-react';
 
-const navStyle = ({ isActive }) => ({
-  display: 'flex', gap: 6, alignItems: 'center',
-  padding: '8px 14px', borderRadius: 8, textDecoration: 'none',
-  fontWeight: 600, fontSize: 14,
-  color: isActive ? '#2563eb' : '#475569',
-  background: isActive ? '#eff6ff' : 'transparent',
-});
-
-function Layout({ children }) {
+function Navbar() {
+  const link = ({ isActive }) => ({
+    display:'flex', alignItems:'center', gap:7,
+    padding:'7px 13px', borderRadius:9, textDecoration:'none',
+    fontWeight:700, fontSize:13, letterSpacing:'-0.01em',
+    fontFamily:'inherit', transition:'all 0.15s',
+    color: isActive ? '#4f46e5' : '#64748b',
+    background: isActive ? '#eef2ff' : 'transparent',
+  });
   return (
-    <div style={{ minHeight: '100vh', background: '#f1f5f9' }}>
-      <nav style={{ background: '#fff', borderBottom: '1.5px solid #e2e8f0', padding: '0 24px', display: 'flex', alignItems: 'center', gap: 8, height: 60 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 24 }}>
-          <Map size={22} color="#2563eb" />
-          <span style={{ fontWeight: 800, fontSize: 17, color: '#1e293b' }}>CalabarzONE</span>
-          <span style={{ fontSize: 10, background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>SDG 11</span>
+    <nav style={{ position:'sticky', top:0, zIndex:200, background:'rgba(255,255,255,0.88)', backdropFilter:'blur(16px)', WebkitBackdropFilter:'blur(16px)', borderBottom:'1px solid rgba(15,23,42,0.07)', padding:'0 28px', display:'flex', alignItems:'center', gap:4, height:58, boxShadow:'0 1px 12px rgba(0,0,0,0.05)' }}>
+      {/* Brand */}
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginRight:22 }}>
+        <div style={{ width:33, height:33, borderRadius:10, background:'linear-gradient(135deg,#4f46e5,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 3px 10px rgba(79,70,229,0.35)' }}>
+          <Map size={16} color="#fff"/>
         </div>
-        <NavLink to="/" style={navStyle}><HomeIcon size={15} /> Planner</NavLink>
-        <NavLink to="/reports" style={navStyle}><FileWarning size={15} /> Reports</NavLink>
-      </nav>
-      <main style={{ padding: '0 0 40px' }}>{children}</main>
-    </div>
+        <div>
+          <div style={{ fontFamily:"'Syne', sans-serif", fontWeight:800, fontSize:16, color:'#0f172a', lineHeight:1, letterSpacing:'-0.03em' }}>CalabarzONE</div>
+          <div style={{ fontSize:9, color:'#94a3b8', letterSpacing:'0.06em', fontWeight:700, textTransform:'uppercase' }}>SDG 11 · Transport Intelligence</div>
+        </div>
+      </div>
+
+      <NavLink to="/" end style={link}><Map size={14}/> Planner</NavLink>
+      <NavLink to="/reports" style={link}><FileWarning size={14}/> Reports</NavLink>
+
+      <div style={{ flex:1 }}/>
+
+      {/* Live status */}
+      <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:11, fontWeight:600, color:'#64748b' }}>
+        <span style={{ width:7, height:7, borderRadius:'50%', background:'#10b981', display:'inline-block', boxShadow:'0 0 0 2px #d1fae5', animation:'pulse 2s ease-in-out infinite' }}/>
+        CALABARZON Region
+      </div>
+    </nav>
   );
 }
 
@@ -35,13 +46,14 @@ export default function App() {
   return (
     <Provider store={store}>
       <BrowserRouter>
-        <Layout>
+        <div style={{ minHeight:'100vh', background:'#f0f2f7', fontFamily:"'Plus Jakarta Sans', sans-serif" }}>
+          <Navbar/>
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/item/:id" element={<RouteDetail />} />
-            <Route path="/reports" element={<Reports />} />
+            <Route path="/" element={<Home/>}/>
+            <Route path="/item/:id" element={<RouteDetail/>}/>
+            <Route path="/reports" element={<Reports/>}/>
           </Routes>
-        </Layout>
+        </div>
       </BrowserRouter>
     </Provider>
   );
